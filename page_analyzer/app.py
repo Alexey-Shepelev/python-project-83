@@ -106,29 +106,31 @@ def get_url(id):
 
 @app.post('/urls/<int:id>/checks')
 def get_checks(id):
-    try:
-        with conn:
-            with conn.cursor() as curs:
-                curs.execute("SELECT name FROM urls WHERE id=(%s);", (id,))
-                url = curs.fetchone()[0]
-                resp = requests.get(url)
+    with conn:
+        with conn.cursor() as curs:
+            curs.execute("SELECT name FROM urls WHERE id=(%s);", (id,))
+            url = curs.fetchone()[0]
+            resp = requests.get(url)
+
+            try:
                 resp.raise_for_status()
-                status_code = resp.status_code
-                curs.execute(
-                    """INSERT INTO url_checks (
-                        url_id,
-                        status_code,
-                        created_at)
-                    VALUES (
-                        %(url_id)s,
-                        %(status_code)s,
-                        %(created_at)s);""", {
-                        'url_id': id,
-                        'status_code': status_code,
-                        'created_at': datetime.now()
-                    })
                 flash('Website successfully checked', 'alert-success')
-                return redirect(url_for('get_url', id=id))
-    except requests.HTTPError:
-        flash('An error occurred while checking', 'alert-danger')
-        return redirect(url_for('get_url', id=id))
+            except requests.HTTPError:
+                flash('An error occurred while checking', 'alert-danger')
+
+            status_code = resp.status_code
+            curs.execute(
+                """INSERT INTO url_checks (
+                    url_id,
+                    status_code,
+                    created_at)
+                VALUES (
+                    %(url_id)s,
+                    %(status_code)s,
+                    %(created_at)s);""", {
+                    'url_id': id,
+                    'status_code': status_code,
+                    'created_at': datetime.now()
+                })
+
+            return redirect(url_for('get_url', id=id))
