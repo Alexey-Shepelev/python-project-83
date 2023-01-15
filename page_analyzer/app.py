@@ -14,6 +14,7 @@ from validators import url as validate
 from datetime import datetime
 from dotenv import load_dotenv
 from urllib.parse import urlparse
+import requests
 
 app = Flask(__name__)
 
@@ -44,10 +45,13 @@ def get_urls():
         with conn.cursor(cursor_factory=NamedTupleCursor) as curs:
             curs.execute("""SELECT
                                 urls.id, urls.name,
-                                MAX(url_checks.created_at) AS created_at
+                                url_checks.status_code,
+                                url_checks.created_at
                                 FROM urls LEFT JOIN url_checks
                                 ON urls.id = url_checks.url_id
-                                GROUP BY urls.id
+                                AND url_checks.created_at = (SELECT
+                                MAX(created_at) FROM url_checks
+                                WHERE url_id = urls.id)
                                 ORDER BY urls.id;""")
             urls = curs.fetchall()
 
@@ -102,17 +106,29 @@ def get_url(id):
 
 @app.post('/urls/<int:id>/checks')
 def get_checks(id):
-    with conn:
-        with conn.cursor() as curs:
-            curs.execute(
-                """INSERT INTO url_checks (
-                    url_id,
-                    created_at)
-                VALUES (
-                    %(url_id)s,
-                    %(created_at)s);""", {
-                    'url_id': id,
-                    'created_at': datetime.now()
-                })
-            flash('Website successfully checked', 'alert-success')
-            return redirect(url_for('get_url', id=id))
+    try:
+        with conn:
+            with conn.cursor() as curs:
+                curs.execute("SELECT name FROM urls WHERE id=(%s);", (id,))
+                url = curs.fetchone()[0]
+                resp = requests.get(url)
+                resp.raise_for_status()
+                status_code = resp.status_code
+                curs.execute(
+                    """INSERT INTO url_checks (
+                        url_id,
+                        status_code,
+                        created_at)
+                    VALUES (
+                        %(url_id)s,
+                        %(status_code)s,
+                        %(created_at)s);""", {
+                        'url_id': id,
+                        'status_code': status_code,
+                        'created_at': datetime.now()
+                    })
+                flash('Website successfully checked', 'alert-success')
+                return redirect(url_for('get_url', id=id))
+    except requests.HTTPError:
+        flash('An error occurred while checking', 'alert-danger')
+        return redirect(url_for('get_url', id=id))
