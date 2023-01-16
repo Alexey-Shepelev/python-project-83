@@ -15,6 +15,7 @@ from datetime import datetime
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 import requests
+from bs4 import BeautifulSoup
 
 app = Flask(__name__)
 
@@ -108,29 +109,54 @@ def get_url(id):
 def get_checks(id):
     with conn:
         with conn.cursor() as curs:
-            curs.execute("SELECT name FROM urls WHERE id=(%s);", (id,))
-            url = curs.fetchone()[0]
-            resp = requests.get(url)
-
             try:
+                curs.execute("SELECT name FROM urls WHERE id=(%s);", (id,))
+                url = curs.fetchone()[0]
+                resp = requests.get(url)
                 resp.raise_for_status()
+                status_code = resp.status_code
+
+                soup = BeautifulSoup(resp.text, 'html.parser')
+                if soup.h1:
+                    h1 = soup.h1.text
+                else:
+                    h1 = ''
+                if soup.title:
+                    title = soup.title.text
+                else:
+                    title = ''
+                if soup.find('meta', {'name': 'description'}):
+                    description = soup.find(
+                        'meta', {'name': 'description'})['content']
+                else:
+                    description = ''
+
+                curs.execute(
+                    """INSERT INTO url_checks (
+                        url_id,
+                        status_code,
+                        h1,
+                        title,
+                        description,
+                        created_at)
+                    VALUES (
+                        %(url_id)s,
+                        %(status_code)s,
+                        %(h1)s,
+                        %(title)s,
+                        %(description)s,
+                        %(created_at)s);""", {
+                        'url_id': id,
+                        'status_code': status_code,
+                        'h1': h1,
+                        'title': title,
+                        'description': description,
+                        'created_at': datetime.now()
+                    })
+
                 flash('Website successfully checked', 'alert-success')
+                return redirect(url_for('get_url', id=id))
+
             except requests.HTTPError:
                 flash('An error occurred while checking', 'alert-danger')
-
-            status_code = resp.status_code
-            curs.execute(
-                """INSERT INTO url_checks (
-                    url_id,
-                    status_code,
-                    created_at)
-                VALUES (
-                    %(url_id)s,
-                    %(status_code)s,
-                    %(created_at)s);""", {
-                    'url_id': id,
-                    'status_code': status_code,
-                    'created_at': datetime.now()
-                })
-
-            return redirect(url_for('get_url', id=id))
+                return redirect(url_for('get_url', id=id))
