@@ -112,7 +112,7 @@ def get_checks(id):
             try:
                 curs.execute("SELECT name FROM urls WHERE id=(%s);", (id,))
                 url = curs.fetchone()[0]
-                resp = requests.get(url)
+                resp = requests.get(url, timeout=30.3)
                 resp.raise_for_status()
                 status_code = resp.status_code
 
