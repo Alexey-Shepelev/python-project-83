@@ -157,6 +157,6 @@ def get_checks(id):
                 flash('Website successfully checked', 'alert-success')
                 return redirect(url_for('get_url', id=id))
 
-            except requests.HTTPError:
+            except requests.exceptions.RequestException:
                 flash('An error occurred while checking', 'alert-danger')
                 return redirect(url_for('get_url', id=id))
