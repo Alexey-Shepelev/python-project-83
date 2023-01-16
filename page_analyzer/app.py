@@ -66,7 +66,7 @@ def add_url():
     url = take_domain(data['url'])
     if not validate(url) or len(url) > 255:
         messages = get_flashed_messages(with_categories=True)
-        flash('Incorrect URL', 'alert-danger')
+        flash('Некорректный URL', 'alert-danger')
         return render_template('index.html', messages=messages, url=url), 422
     try:
         with conn:
@@ -79,14 +79,14 @@ def add_url():
                     """,
                     {'name': url, 'created_at': datetime.now()})
                 id = curs.fetchone()[0]
-                flash('Website successfully added', 'alert-success')
+                flash('Страница успешно добавлена', 'alert-success')
                 return redirect(url_for('get_url', id=id))
     except psycopg2.errors.UniqueViolation:
         with conn:
             with conn.cursor() as curs:
                 curs.execute("SELECT id FROM urls WHERE name=(%s);", (url,))
                 id = curs.fetchone()[0]
-                flash('Website already exist', 'alert-info')
+                flash('Страница уже существует', 'alert-info')
                 return redirect(url_for('get_url', id=id))
 
 
@@ -154,9 +154,9 @@ def get_checks(id):
                         'created_at': datetime.now()
                     })
 
-                flash('Website successfully checked', 'alert-success')
+                flash('Страница успешно проверена', 'alert-success')
                 return redirect(url_for('get_url', id=id))
 
             except requests.exceptions.RequestException:
-                flash('An error occurred while checking', 'alert-danger')
+                flash('Произошла ошибка при проверке', 'alert-danger')
                 return redirect(url_for('get_url', id=id))
