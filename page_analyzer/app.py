@@ -64,7 +64,8 @@ def add_url():
     if not validate(raw_url) or len(raw_url) > 255:
         flash('Некорректный URL', 'alert-danger')
         messages = get_flashed_messages(with_categories=True)
-        return render_template('index.html', messages=messages, url=raw_url), 422
+        return render_template(
+            'index.html', messages=messages, url=raw_url), 422
     try:
         with conn:
             with conn.cursor() as curs:
