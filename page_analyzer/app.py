@@ -55,22 +55,20 @@ def get_urls():
                                 WHERE url_id = urls.id)
                                 ORDER BY urls.id;""")
             urls = curs.fetchall()
-
-    # conn.close()
     return render_template('urls.html', urls=urls)
 
 
 @app.post('/urls')
 def add_url():
-    data = request.form.to_dict()
-    url = take_domain(data['url'])
-    if not validate(url) or len(url) > 255:
-        messages = get_flashed_messages(with_categories=True)
+    raw_url = request.form.get('url')
+    if not validate(raw_url) or len(raw_url) > 255:
         flash('Некорректный URL', 'alert-danger')
-        return render_template('index.html', messages=messages, url=url), 422
+        messages = get_flashed_messages(with_categories=True)
+        return render_template('index.html', messages=messages, url=raw_url), 422
     try:
         with conn:
             with conn.cursor() as curs:
+                url = take_domain(raw_url)
                 curs.execute(
                     """
                     INSERT INTO urls (name, created_at)
