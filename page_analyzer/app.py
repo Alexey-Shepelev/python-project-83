@@ -25,19 +25,38 @@ DATABASE_URL = os.getenv('DATABASE_URL')
 conn = psycopg2.connect(DATABASE_URL)
 
 
-def take_domain(url):
+def get_domain(url):
     url = urlparse(url)
-    return url._replace(
-        path='',
-        params='',
-        query='',
-        fragment='').geturl()
+    return f"{url.scheme}://{url.netloc}"
+
+
+def parse(data):
+    """
+    Parse webpage content and return values of
+    tags <h1> and <title>, and value of attribute
+    content of tag <meta name="description" content="...">
+    :param data: html text
+    :return: h1, title, description
+    """
+    soup = BeautifulSoup(data, 'html.parser')
+    if soup.h1:
+        h1 = soup.h1.text
+    else:
+        h1 = ''
+    if soup.title:
+        title = soup.title.text
+    else:
+        title = ''
+    if soup.find('meta', {'name': 'description'}):
+        description = soup.find('meta', {'name': 'description'})['content']
+    else:
+        description = ''
+    return h1, title, description
 
 
 @app.route('/')
 def index():
-    messages = get_flashed_messages(with_categories=True)
-    return render_template('index.html', messages=messages)
+    return render_template('index.html')
 
 
 @app.route('/urls')
@@ -69,7 +88,7 @@ def add_url():
     try:
         with conn:
             with conn.cursor() as curs:
-                url = take_domain(raw_url)
+                url = get_domain(raw_url)
                 curs.execute(
                     """
                     INSERT INTO urls (name, created_at)
@@ -115,20 +134,7 @@ def get_checks(id):
                 resp.raise_for_status()
                 status_code = resp.status_code
 
-                soup = BeautifulSoup(resp.text, 'html.parser')
-                if soup.h1:
-                    h1 = soup.h1.text
-                else:
-                    h1 = ''
-                if soup.title:
-                    title = soup.title.text
-                else:
-                    title = ''
-                if soup.find('meta', {'name': 'description'}):
-                    description = soup.find(
-                        'meta', {'name': 'description'})['content']
-                else:
-                    description = ''
+                h1, title, description = parse(resp.text)
 
                 curs.execute(
                     """INSERT INTO url_checks (
