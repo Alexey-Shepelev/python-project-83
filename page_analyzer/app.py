@@ -49,6 +49,8 @@ def parse(data):
         title = ''
     if soup.find('meta', {'name': 'description'}):
         description = soup.find('meta', {'name': 'description'})['content']
+        if len(description) > 255:
+            description = f'{description[:252]}...'
     else:
         description = ''
     return h1, title, description
