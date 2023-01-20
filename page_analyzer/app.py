@@ -5,17 +5,15 @@ from flask import (
     redirect,
     request,
     flash,
-    get_flashed_messages
 )
 import os
 import psycopg2
 from psycopg2.extras import NamedTupleCursor
-from validators import url as validate
 from datetime import datetime
 from dotenv import load_dotenv
-from urllib.parse import urlparse
 import requests
-from bs4 import BeautifulSoup
+from .url import get_domain, valid_url
+from .page import parse
 
 app = Flask(__name__)
 
@@ -23,37 +21,6 @@ load_dotenv()
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 DATABASE_URL = os.getenv('DATABASE_URL')
 conn = psycopg2.connect(DATABASE_URL)
-
-
-def get_domain(url):
-    url = urlparse(url)
-    return f"{url.scheme}://{url.netloc}"
-
-
-def parse(data):
-    """
-    Parse webpage content and return values of
-    tags <h1> and <title>, and value of attribute
-    content of tag <meta name="description" content="...">
-    :param data: html text
-    :return: h1, title, description
-    """
-    soup = BeautifulSoup(data, 'html.parser')
-    if soup.h1:
-        h1 = soup.h1.text
-    else:
-        h1 = ''
-    if soup.title:
-        title = soup.title.text
-    else:
-        title = ''
-    if soup.find('meta', {'name': 'description'}):
-        description = soup.find('meta', {'name': 'description'})['content']
-        if len(description) > 255:
-            description = f'{description[:252]}...'
-    else:
-        description = ''
-    return h1, title, description
 
 
 @app.route('/')
@@ -82,11 +49,9 @@ def get_urls():
 @app.post('/urls')
 def add_url():
     raw_url = request.form.get('url')
-    if not validate(raw_url) or len(raw_url) > 255:
-        flash('Некорректный URL', 'alert-danger')
-        messages = get_flashed_messages(with_categories=True)
+    if not valid_url(raw_url):
         return render_template(
-            'index.html', messages=messages, url=raw_url), 422
+            'index.html', url=raw_url), 422
     try:
         with conn:
             with conn.cursor() as curs:
@@ -118,11 +83,9 @@ def get_url(id):
             site = curs.fetchone()
             curs.execute("SELECT * FROM url_checks WHERE url_id=(%s);", (id,))
             checks = curs.fetchall()
-            messages = get_flashed_messages(with_categories=True)
             return render_template('url.html',
                                    site=site,
-                                   checks=checks,
-                                   messages=messages)
+                                   checks=checks)
 
 
 @app.post('/urls/<int:id>/checks')
