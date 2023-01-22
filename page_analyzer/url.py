@@ -1,6 +1,5 @@
 from validators import url as validate
 from urllib.parse import urlparse
-from flask import flash
 
 
 def get_domain(url):
@@ -8,22 +7,19 @@ def get_domain(url):
     return f"{url.scheme}://{url.netloc}"
 
 
-def valid_url(raw_url):
+def is_valid(raw_url):
     """
     Check URL if it's correct (using validators.url),
     not empty and not more than 255 characters
     :param raw_url: URL
-    :return: True or False
+    :return: List of errors
     """
-    result = True
+    err_list = []
     url = get_domain(raw_url)
     if not raw_url:
-        flash('URL обязателен', 'alert-danger')
-        result = False
+        err_list.append('URL обязателен')
     if not validate(raw_url):
-        flash('Некорректный URL', 'alert-danger')
-        result = False
+        err_list.append('Некорректный URL')
     if len(url) > 255:
-        flash('URL превышает 255 символов', 'alert-danger')
-        result = False
-    return result
+        err_list.append('URL превышает 255 символов')
+    return err_list

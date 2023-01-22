@@ -12,7 +12,7 @@ from psycopg2.extras import NamedTupleCursor
 from datetime import datetime
 from dotenv import load_dotenv
 import requests
-from .url import get_domain, valid_url
+from .url import get_domain, is_valid
 from .page import parse
 
 app = Flask(__name__)
@@ -49,7 +49,10 @@ def get_urls():
 @app.post('/urls')
 def add_url():
     raw_url = request.form.get('url')
-    if not valid_url(raw_url):
+    errors = is_valid(raw_url)
+    if errors:
+        for error in errors:
+            flash(error, 'alert-danger')
         return render_template(
             'index.html', url=raw_url), 422
     try:

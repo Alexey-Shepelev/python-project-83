@@ -10,14 +10,8 @@ def parse(data):
     :return: h1, title, description
     """
     soup = BeautifulSoup(data, 'html.parser')
-    if soup.h1:
-        h1 = soup.h1.text
-    else:
-        h1 = ''
-    if soup.title:
-        title = soup.title.text
-    else:
-        title = ''
+    h1 = soup.h1.text if soup.h1 else ''
+    title = soup.title.text if soup.title else ''
     if soup.find('meta', {'name': 'description'}):
         description = soup.find('meta', {'name': 'description'})['content']
         if len(description) > 255:
