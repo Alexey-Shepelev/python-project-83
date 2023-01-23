@@ -1,3 +1,4 @@
+import urllib3.exceptions
 from flask import (
     Flask,
     render_template,
@@ -133,3 +134,8 @@ def get_checks(id):
             except requests.exceptions.RequestException:
                 flash('Произошла ошибка при проверке', 'alert-danger')
                 return redirect(url_for('get_url', id=id))
+
+
+@app.errorhandler(urllib3.exceptions.LocationParseError)
+def special_exception_handler(error):
+    return render_template('error.html'), 500
